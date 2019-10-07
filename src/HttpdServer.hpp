@@ -8,14 +8,14 @@ using namespace std;
 
 class HttpdServer {
 public:
-	HttpdServer(INIReader& t_config);
+    explicit HttpdServer(INIReader &t_config);
 
-	void launch();
+    void launch();
 
 protected:
-	INIReader& config;
-	string port;
-	string doc_root;
+    INIReader &config;
+    string port;
+    string doc_root;
 };
 
 #endif // HTTPDSERVER_HPP

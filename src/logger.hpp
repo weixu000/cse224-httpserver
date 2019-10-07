@@ -7,6 +7,7 @@
 using namespace std;
 
 void initLogging();
+
 shared_ptr<spdlog::logger> logger();
 
 #endif // LOGGER_HPP
