@@ -4,18 +4,21 @@
 #include "inih/INIReader.h"
 #include "logger.hpp"
 
-using namespace std;
-
 class HttpdServer {
 public:
-    explicit HttpdServer(INIReader &t_config);
+    explicit HttpdServer(const INIReader &config);
 
     void launch();
 
+    virtual  ~HttpdServer();
+
 protected:
-    INIReader &config;
-    string port;
-    string doc_root;
+    std::string port;
+    std::string doc_root;
+
+    int sock = -1;
+
+    void serverListen();
 };
 
 #endif // HTTPDSERVER_HPP
