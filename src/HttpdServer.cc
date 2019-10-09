@@ -3,7 +3,6 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
-#include <sstream>
 
 #include "logger.hpp"
 #include "HttpdServer.hpp"
@@ -11,30 +10,24 @@
 
 namespace {
     std::string sockaddrToString(const struct sockaddr &sa) {
-        ostringstream ss;
         switch (sa.sa_family) {
             case AF_INET: {
                 auto addr_v4 = reinterpret_cast<const sockaddr_in *>(&sa);
                 std::array<char, INET_ADDRSTRLEN> buf{};
                 inet_ntop(AF_INET, &addr_v4->sin_addr, buf.data(), buf.size());
-                ss << buf.data() << ":" << ntohs(addr_v4->sin_port);
-                break;
+                return std::string(buf.data()) + ":" + std::to_string(ntohs(addr_v4->sin_port));
             }
 
             case AF_INET6: {
                 auto addr_v6 = reinterpret_cast<const sockaddr_in6 *>(&sa);
                 std::array<char, INET6_ADDRSTRLEN> buf{};
                 inet_ntop(AF_INET6, &addr_v6->sin6_addr, buf.data(), buf.size());
-                ss << "[" << buf.data() << "]:" << ntohs(addr_v6->sin6_port);
-                break;
+                return std::string(buf.data()) + ":" + std::to_string(ntohs(addr_v6->sin6_port));
             }
 
             default:
-                ss << "Unknown AF";
-                break;
+                return "Unknown AF";
         }
-
-        return ss.str();
     }
 
     void handleConection(int sock) {
