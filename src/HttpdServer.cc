@@ -7,6 +7,7 @@
 
 #include "logger.hpp"
 #include "HttpdServer.hpp"
+#include "HTTPRequest.hpp"
 
 namespace {
     std::string sockaddrToString(const struct sockaddr &sa) {
@@ -35,6 +36,15 @@ namespace {
 
         return ss.str();
     }
+
+    void handleConection(int sock) {
+        const auto request = HTTPRequest(sock);
+        if (request.bad())
+            return;
+
+        std::string response = "HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n";
+        send(sock, response.data(), response.size(), 0);
+    }
 }
 
 HttpdServer::HttpdServer(const INIReader &config) {
@@ -62,8 +72,6 @@ void HttpdServer::launch() {
 
     serverListen();
 
-    std::string ans = "accepted!\n";
-
     while (true) {
         sockaddr peer_addr{};
         socklen_t peer_addr_size = sizeof(sockaddr);
@@ -74,8 +82,10 @@ void HttpdServer::launch() {
         }
         logger()->info("Accepted {}", sockaddrToString(peer_addr));
 
-        write(peer_sock, ans.c_str(), ans.length());
+        handleConection(peer_sock);
+
         close(peer_sock);
+        logger()->info("Closed {}", sockaddrToString(peer_addr));
     }
 }
 

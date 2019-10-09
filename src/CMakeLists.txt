@@ -6,11 +6,10 @@ set(CMAKE_CXX_STANDARD 11)
 find_package(Threads REQUIRED)
 
 add_executable(httpd
-        HttpdServer.cc
-        HttpdServer.hpp
-        logger.cc
-        logger.hpp
-        server-main.cc)
+        server-main.cc
+        HttpdServer.cc HttpdServer.hpp
+        logger.cc logger.hpp
+        HTTPRequest.cc HTTPRequest.hpp)
 target_compile_options(httpd PRIVATE -Wall -Wextra -pedantic -Werror -Wnon-virtual-dtor)
 target_include_directories(httpd PRIVATE ../dependencies/include)
 target_link_libraries(httpd PRIVATE Threads::Threads)
