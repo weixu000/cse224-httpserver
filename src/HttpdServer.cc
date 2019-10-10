@@ -4,7 +4,8 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include "logger.hpp"
+#include "spdlog/spdlog.h"
+
 #include "HttpdServer.hpp"
 #include "HTTPRequest.hpp"
 
@@ -41,27 +42,23 @@ namespace {
 }
 
 HttpdServer::HttpdServer(const INIReader &config) {
-    auto log = logger();
-
     port = config.Get("httpd", "port", "");
     if (port.empty()) {
-        log->error("port was not in the config file");
+        spdlog::error("port was not in the config file");
         exit(EX_CONFIG);
     }
 
     doc_root = config.Get("httpd", "doc_root", "");
     if (doc_root.empty()) {
-        log->error("doc_root was not in the config file");
+        spdlog::error("doc_root was not in the config file");
         exit(EX_CONFIG);
     }
 }
 
 void HttpdServer::launch() {
-    auto log = logger();
-
-    log->info("Launching web server");
-    log->info("Port: {}", port);
-    log->info("doc_root: {}", doc_root);
+    spdlog::info("Launching web server");
+    spdlog::info("Port: {}", port);
+    spdlog::info("doc_root: {}", doc_root);
 
     serverListen();
 
@@ -70,15 +67,15 @@ void HttpdServer::launch() {
         socklen_t peer_addr_size = sizeof(sockaddr);
         int peer_sock = accept(sock, &peer_addr, &peer_addr_size);
         if (peer_sock == -1) {
-            logger()->error("accept() error");
+            spdlog::error("accept() error");
             exit(EXIT_FAILURE);
         }
-        logger()->info("Accepted {}", sockaddrToString(peer_addr));
+        spdlog::info("Accepted {}", sockaddrToString(peer_addr));
 
         handleConection(peer_sock);
 
         close(peer_sock);
-        logger()->info("Closed {}", sockaddrToString(peer_addr));
+        spdlog::info("Closed {}", sockaddrToString(peer_addr));
     }
 }
 
@@ -89,7 +86,7 @@ void HttpdServer::serverListen() {
 
     int s = getaddrinfo(nullptr, port.c_str(), &hints, &result);
     if (s != 0) {
-        logger()->error("getaddrinfo: {}", gai_strerror(s));
+        spdlog::error("getaddrinfo: {}", gai_strerror(s));
         exit(EXIT_FAILURE);
     }
 
@@ -100,7 +97,7 @@ void HttpdServer::serverListen() {
             continue;
 
         if (bind(sock, rp->ai_addr, rp->ai_addrlen) == 0 && listen(sock, 10) == 0) {
-            logger()->info("listening on {}", sockaddrToString(*rp->ai_addr));
+            spdlog::info("listening on {}", sockaddrToString(*rp->ai_addr));
             break;                  /* Success */
         }
 
@@ -108,7 +105,7 @@ void HttpdServer::serverListen() {
     }
 
     if (sock == -1) {               /* No address succeeded */
-        logger()->error("Could not listen!");
+        spdlog::error("Could not listen!");
         exit(EXIT_FAILURE);
     }
 

@@ -2,7 +2,6 @@
 #define HTTPDSERVER_HPP
 
 #include "inih/INIReader.h"
-#include "logger.hpp"
 
 class HttpdServer {
 public:
