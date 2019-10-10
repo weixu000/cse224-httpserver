@@ -27,7 +27,6 @@ HTTPRequest::HTTPRequest(int sock) {
             }
         }
     }
-    spdlog::info(header);
 
     std::istringstream ss(header);
     std::string line;
