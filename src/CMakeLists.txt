@@ -8,7 +8,8 @@ find_package(Threads REQUIRED)
 add_executable(httpd
         server-main.cc
         HttpdServer.cc HttpdServer.hpp
-        HTTPRequest.cc HTTPRequest.hpp)
+        HTTPRequest.cc HTTPRequest.hpp
+        HTTPResponse.cc HTTPResponse.hpp)
 target_compile_options(httpd PRIVATE -Wall -Wextra -pedantic -Werror -Wnon-virtual-dtor)
 target_include_directories(httpd PRIVATE ../dependencies/include)
 target_link_libraries(httpd PRIVATE Threads::Threads)

@@ -8,6 +8,7 @@
 
 #include "HttpdServer.hpp"
 #include "HTTPRequest.hpp"
+#include "HTTPResponse.hpp"
 
 namespace {
     std::string sockaddrToString(const struct sockaddr &sa) {
@@ -31,35 +32,20 @@ namespace {
         }
     }
 
-    void sendResponseHeader(int sock,
-                            const std::string &http_ver, const std::string &code, const std::string &desc,
-                            std::initializer_list<field_pair_t> fields) {
-        auto header = http_ver + " " + code + " " + desc + "\r\n";
-        for (auto &it:fields) {
-            header += it.first + ": " + it.second + "\r\n";
-        }
-        header += "\r\n";
-        if (send(sock, header.data(), header.size(), 0) == -1) {
-            spdlog::error("send() error");
-        }
-    }
-
-    void handleConection(int sock) {
+    void handleConection(int sock, const std::string &root) {
         while (true) {
             const auto request = HTTPRequest(sock);
             if (request.bad()) {
-                sendResponseHeader(sock,
-                                   "HTTP/1.1", "400", "Client Error",
-                                   {field_pair_t("Connection", "close")});
-                spdlog::info("Response 400");
+                send400ClientError(sock, true);
                 return;
             }
 
-            sendResponseHeader(sock,
-                               "HTTP/1.1", "404", "Not Found",
-                               {field_pair_t("Connection", "keep-alive"),
-                                field_pair_t("Content-Length", "0")});
-            spdlog::info("Response 404");
+            if (request.method() == "GET") {
+                doGET(sock, request, root);
+                continue;
+            }
+
+            send404NotFound(sock, false);
         }
     }
 }
@@ -95,7 +81,7 @@ void HttpdServer::launch() {
         }
         spdlog::info("Accepted {}", sockaddrToString(peer_addr));
 
-        handleConection(peer_sock);
+        handleConection(peer_sock, doc_root);
 
         close(peer_sock);
         spdlog::info("Closed {}", sockaddrToString(peer_addr));
