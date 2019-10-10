@@ -31,13 +31,36 @@ namespace {
         }
     }
 
-    void handleConection(int sock) {
-        const auto request = HTTPRequest(sock);
-        if (request.bad())
-            return;
+    void sendResponseHeader(int sock,
+                            const std::string &http_ver, const std::string &code, const std::string &desc,
+                            std::initializer_list<field_pair_t> fields) {
+        auto header = http_ver + " " + code + " " + desc + "\r\n";
+        for (auto &it:fields) {
+            header += it.first + ": " + it.second + "\r\n";
+        }
+        header += "\r\n";
+        if (send(sock, header.data(), header.size(), 0) == -1) {
+            spdlog::error("send() error");
+        }
+    }
 
-        std::string response = "HTTP/1.1 404 Not Found\r\nConnection: close\r\n\r\n";
-        send(sock, response.data(), response.size(), 0);
+    void handleConection(int sock) {
+        while (true) {
+            const auto request = HTTPRequest(sock);
+            if (request.bad()) {
+                sendResponseHeader(sock,
+                                   "HTTP/1.1", "400", "Client Error",
+                                   {field_pair_t("Connection", "close")});
+                spdlog::info("Response 400");
+                return;
+            }
+
+            sendResponseHeader(sock,
+                               "HTTP/1.1", "404", "Not Found",
+                               {field_pair_t("Connection", "keep-alive"),
+                                field_pair_t("Content-Length", "0")});
+            spdlog::info("Response 404");
+        }
     }
 }
 
