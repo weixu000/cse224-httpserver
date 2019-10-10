@@ -14,9 +14,4 @@ void send400ClientError(int sock, bool close);
 
 void send404NotFound(int sock, bool close);
 
-using mimes_t = std::map<std::string, std::string>;
-
-void doGET(int sock, const HTTPRequest &req,
-           const std::string &root_dir, const mimes_t &mimes);
-
 #endif //HTTPRESPONSE_HPP

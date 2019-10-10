@@ -3,7 +3,7 @@
 
 #include "inih/INIReader.h"
 
-#include "HTTPResponse.hpp"
+using mimes_t = std::map<std::string, std::string>;
 
 class HttpdServer {
 public:
@@ -13,11 +13,16 @@ public:
 
     virtual  ~HttpdServer();
 
+    const std::string &docRoot() const { return _doc_root; }
+
+    const mimes_t &mimeTypes() const { return _mime_types; }
+
 protected:
     std::string port;
-    std::string doc_root;
 
-    mimes_t mime_types;
+    std::string _doc_root;
+
+    mimes_t _mime_types;
 
     int sock = -1;
 

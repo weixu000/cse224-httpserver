@@ -2,54 +2,13 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netdb.h>
-#include <arpa/inet.h>
 #include <fstream>
 
 #include "spdlog/spdlog.h"
 
 #include "HttpdServer.hpp"
-#include "HTTPRequest.hpp"
-#include "HTTPResponse.hpp"
-
-namespace {
-    std::string sockaddrToString(const struct sockaddr &sa) {
-        switch (sa.sa_family) {
-            case AF_INET: {
-                auto addr_v4 = reinterpret_cast<const sockaddr_in *>(&sa);
-                std::array<char, INET_ADDRSTRLEN> buf{};
-                inet_ntop(AF_INET, &addr_v4->sin_addr, buf.data(), buf.size());
-                return std::string(buf.data()) + ":" + std::to_string(ntohs(addr_v4->sin_port));
-            }
-
-            case AF_INET6: {
-                auto addr_v6 = reinterpret_cast<const sockaddr_in6 *>(&sa);
-                std::array<char, INET6_ADDRSTRLEN> buf{};
-                inet_ntop(AF_INET6, &addr_v6->sin6_addr, buf.data(), buf.size());
-                return std::string(buf.data()) + ":" + std::to_string(ntohs(addr_v6->sin6_port));
-            }
-
-            default:
-                return "Unknown AF";
-        }
-    }
-
-    void handleConection(int sock, const std::string &root, const mimes_t &mime_types) {
-        while (true) {
-            const auto request = HTTPRequest(sock);
-            if (request.bad()) {
-                send400ClientError(sock, true);
-                return;
-            }
-
-            if (request.method() == "GET") {
-                doGET(sock, request, root, mime_types);
-                continue;
-            }
-
-            send404NotFound(sock, false);
-        }
-    }
-}
+#include "HTTPHandler.hpp"
+#include "utils.hpp"
 
 HttpdServer::HttpdServer(const INIReader &config) {
     port = config.Get("httpd", "port", "");
@@ -58,8 +17,8 @@ HttpdServer::HttpdServer(const INIReader &config) {
         exit(EX_CONFIG);
     }
 
-    doc_root = config.Get("httpd", "doc_root", "");
-    if (doc_root.empty()) {
+    _doc_root = config.Get("httpd", "doc_root", "");
+    if (_doc_root.empty()) {
         spdlog::error("doc_root was not in the config file");
         exit(EX_CONFIG);
     }
@@ -73,14 +32,14 @@ HttpdServer::HttpdServer(const INIReader &config) {
     std::ifstream mime_fs(mime_path);
     std::string ext, mime;
     while (mime_fs >> ext >> mime) {
-        mime_types[ext] = mime;
+        _mime_types[ext] = mime;
     }
 }
 
 void HttpdServer::launch() {
     spdlog::info("Launching web server");
     spdlog::info("Port: {}", port);
-    spdlog::info("doc_root: {}", doc_root);
+    spdlog::info("doc_root: {}", _doc_root);
 
     serverListen();
 
@@ -94,10 +53,8 @@ void HttpdServer::launch() {
         }
         spdlog::info("Accepted {}", sockaddrToString(peer_addr));
 
-        handleConection(peer_sock, doc_root, mime_types);
-
-        close(peer_sock);
-        spdlog::info("Closed {}", sockaddrToString(peer_addr));
+        HTTPHandler handler(*this, peer_sock, peer_addr);
+        handler.serve();
     }
 }
 
