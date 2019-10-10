@@ -3,6 +3,8 @@
 
 #include "inih/INIReader.h"
 
+#include "HTTPResponse.hpp"
+
 class HttpdServer {
 public:
     explicit HttpdServer(const INIReader &config);
@@ -14,6 +16,8 @@ public:
 protected:
     std::string port;
     std::string doc_root;
+
+    mimes_t mime_types;
 
     int sock = -1;
 

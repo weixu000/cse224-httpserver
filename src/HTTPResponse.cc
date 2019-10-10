@@ -48,7 +48,15 @@ void send404NotFound(int sock, bool close) {
     }
 }
 
-void doGET(int sock, const HTTPRequest &req, const std::string &root_dir) {
+namespace {
+    std::string getFileExtension(const std::string &path) {
+        auto dot = path.rfind('.');
+        return dot == std::string::npos ? "" : path.substr(dot);
+    }
+}
+
+void doGET(int sock, const HTTPRequest &req,
+           const std::string &root_dir, const mimes_t &mimes) {
     spdlog::info("responding to GET");
 
     if (req.URI().empty() || req.URI()[0] != '/') {
@@ -121,10 +129,20 @@ void doGET(int sock, const HTTPRequest &req, const std::string &root_dir) {
         return;
     }
 
-    sendResponseHeader(sock,
-                       "HTTP/1.1", "200", "OK",
-                       {field_pair_t("Connection", "keep-alive"),
-                        field_pair_t("Content-Length", std::to_string(buf.st_size))});
+    auto ext = getFileExtension(path);
+    if (mimes.count(ext)) {
+        sendResponseHeader(sock,
+                           "HTTP/1.1", "200", "OK",
+                           {field_pair_t("Connection", "keep-alive"),
+                            field_pair_t("Content-Length", std::to_string(buf.st_size)),
+                            field_pair_t("Content-Type", mimes.at(ext))});
+    } else {
+        sendResponseHeader(sock,
+                           "HTTP/1.1", "200", "OK",
+                           {field_pair_t("Connection", "keep-alive"),
+                            field_pair_t("Content-Length", std::to_string(buf.st_size))});
+    }
+
     while (true) {
         auto s = sendfile(sock, fd, nullptr, buf.st_size);
         if (s == buf.st_size) {

@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <fstream>
 
 #include "spdlog/spdlog.h"
 
@@ -32,7 +33,7 @@ namespace {
         }
     }
 
-    void handleConection(int sock, const std::string &root) {
+    void handleConection(int sock, const std::string &root, const mimes_t &mime_types) {
         while (true) {
             const auto request = HTTPRequest(sock);
             if (request.bad()) {
@@ -41,7 +42,7 @@ namespace {
             }
 
             if (request.method() == "GET") {
-                doGET(sock, request, root);
+                doGET(sock, request, root, mime_types);
                 continue;
             }
 
@@ -62,6 +63,18 @@ HttpdServer::HttpdServer(const INIReader &config) {
         spdlog::error("doc_root was not in the config file");
         exit(EX_CONFIG);
     }
+
+    auto mime_path = config.Get("httpd", "mime_types", "");
+    if (mime_path.empty()) {
+        spdlog::error("mime_types was not in the config file");
+        exit(EX_CONFIG);
+    }
+
+    std::ifstream mime_fs(mime_path);
+    std::string ext, mime;
+    while (mime_fs >> ext >> mime) {
+        mime_types[ext] = mime;
+    }
 }
 
 void HttpdServer::launch() {
@@ -81,7 +94,7 @@ void HttpdServer::launch() {
         }
         spdlog::info("Accepted {}", sockaddrToString(peer_addr));
 
-        handleConection(peer_sock, doc_root);
+        handleConection(peer_sock, doc_root, mime_types);
 
         close(peer_sock);
         spdlog::info("Closed {}", sockaddrToString(peer_addr));
