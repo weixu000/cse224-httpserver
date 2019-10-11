@@ -1,5 +1,4 @@
 #include <sys/socket.h>
-#include <netdb.h>
 #include <arpa/inet.h>
 
 #include <array>
@@ -67,4 +66,12 @@ std::string canonicalizeURI(const std::string &uri) {
         ret += s;
     }
     return ret;
+}
+
+std::string timeToHTTPString(const time_t &t) {
+    char buf[30];
+    tm tp;
+    gmtime_r(&t, &tp);
+    strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S %Z GMT", &tp);
+    return buf;
 }

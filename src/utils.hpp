@@ -11,4 +11,6 @@ std::string getFileExtension(const std::string &path);
 
 std::string canonicalizeURI(const std::string &uri);
 
+std::string timeToHTTPString(const time_t &t);
+
 #endif //UTILS_HPP

@@ -1,7 +1,6 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <spdlog/spdlog.h>
-#include <deque>
 #include <sys/sendfile.h>
 
 #include "HTTPHandler.hpp"
@@ -49,29 +48,24 @@ void HTTPHandler::doGET(const HTTPRequest &req) {
     auto path = server.docRoot() + uri;
     spdlog::info("GET file path: {}", path);
 
-    if (access(path.c_str(), R_OK) == -1) {
-        send404NotFound(sock, false);
-        return;
-    }
-
     // Check if the path exists
-    struct stat buf{};
-    if (stat(path.c_str(), &buf) == -1) {
+    struct stat st{};
+    if (stat(path.c_str(), &st) == -1) {
         send404NotFound(sock, false);
         return;
     }
 
     // Find index.html if it is a directory
-    if (S_ISDIR(buf.st_mode)) {
+    if (S_ISDIR(st.st_mode)) {
         path += "/index.html";
-        if (stat(path.c_str(), &buf) == -1) {
+        if (stat(path.c_str(), &st) == -1) {
             send404NotFound(sock, false);
             return;
         }
     }
 
     // Check if it is regular file
-    if (!S_ISREG(buf.st_mode)) {
+    if (!S_ISREG(st.st_mode)) {
         send404NotFound(sock, false);
         return;
     }
@@ -87,18 +81,20 @@ void HTTPHandler::doGET(const HTTPRequest &req) {
         sendResponseHeader(sock,
                            "HTTP/1.1", "200", "OK",
                            {field_pair_t("Connection", "keep-alive"),
-                            field_pair_t("Content-Length", std::to_string(buf.st_size)),
-                            field_pair_t("Content-Type", server.mimeTypes().at(ext))});
+                            field_pair_t("Content-Length", std::to_string(st.st_size)),
+                            field_pair_t("Content-Type", server.mimeTypes().at(ext)),
+                            field_pair_t("Last-Modified", timeToHTTPString(st.st_mtime))});
     } else {
         sendResponseHeader(sock,
                            "HTTP/1.1", "200", "OK",
                            {field_pair_t("Connection", "keep-alive"),
-                            field_pair_t("Content-Length", std::to_string(buf.st_size))});
+                            field_pair_t("Content-Length", std::to_string(st.st_size)),
+                            field_pair_t("Last-Modified", timeToHTTPString(st.st_mtime))});
     }
 
     while (true) {
-        auto s = sendfile(sock, fd, nullptr, buf.st_size);
-        if (s == buf.st_size) {
+        auto s = sendfile(sock, fd, nullptr, st.st_size);
+        if (s == st.st_size) {
             break;
         } else if (s == EAGAIN) {
             spdlog::error("sendfile() failed with EAGAIN");
