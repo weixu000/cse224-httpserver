@@ -53,8 +53,10 @@ void HttpdServer::launch() {
         }
         spdlog::info("Accepted {}", sockaddrToString(peer_addr));
 
-        HTTPHandler handler(*this, peer_sock, peer_addr);
-        handler.serve();
+        pool.addTask([this, peer_addr, peer_sock] {
+            HTTPHandler handler(*this, peer_sock, peer_addr);
+            handler.serve();
+        });
     }
 }
 

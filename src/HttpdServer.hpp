@@ -2,6 +2,7 @@
 #define HTTPDSERVER_HPP
 
 #include "inih/INIReader.h"
+#include "ThreadPool.hpp"
 
 using mimes_t = std::map<std::string, std::string>;
 
@@ -27,6 +28,8 @@ protected:
     int sock = -1;
 
     void serverListen();
+
+    ThreadPool pool;
 };
 
 #endif // HTTPDSERVER_HPP
