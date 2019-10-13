@@ -31,14 +31,14 @@ void HTTPHandler::serve() {
             if (request.method() == "GET") {
                 doGET(request);
             } else {
-                send400ClientError(sock, true);
+                HTTPResponse::send400ClientError(sock, true);
                 return;
             }
         } catch (const BadError &) {
-            send400ClientError(sock, true);
+            HTTPResponse::send400ClientError(sock, true);
             return;
         } catch (const IncompleteError &) {
-            send400ClientError(sock, true);
+            HTTPResponse::send400ClientError(sock, true);
             return;
         } catch (const TimeoutError &) {
             spdlog::error("Timeout before receiving request");
@@ -60,7 +60,7 @@ void HTTPHandler::serve() {
 void HTTPHandler::doGET(const HTTPRequest &req) {
     auto uri = canonicalizeURI(req.URI());
     if (uri.empty()) {
-        send400ClientError(sock, false);
+        HTTPResponse::send400ClientError(sock, false);
         return;
     }
     auto path = server.docRoot() + uri;
@@ -69,7 +69,7 @@ void HTTPHandler::doGET(const HTTPRequest &req) {
     // Check if the path exists
     struct stat st{};
     if (stat(path.c_str(), &st) == -1) {
-        send404NotFound(sock, false);
+        HTTPResponse::send404NotFound(sock, false);
         return;
     }
 
@@ -77,40 +77,32 @@ void HTTPHandler::doGET(const HTTPRequest &req) {
     if (S_ISDIR(st.st_mode)) {
         path += "/index.html";
         if (stat(path.c_str(), &st) == -1) {
-            send404NotFound(sock, false);
+            HTTPResponse::send404NotFound(sock, false);
             return;
         }
     }
 
     // Check if it is regular file
     if (!S_ISREG(st.st_mode)) {
-        send404NotFound(sock, false);
+        HTTPResponse::send404NotFound(sock, false);
         return;
     }
 
     auto fd = open(path.c_str(), O_RDONLY);
     if (fd == -1) {
-        send404NotFound(sock, false);
+        HTTPResponse::send404NotFound(sock, false);
         return;
     }
 
     auto ext = getFileExtension(path);
+    HTTPResponse res("HTTP/1.1", "200", "OK");
+    res.set("Content-Length", std::to_string(st.st_size))
+            .set("Last-Modified", timeToHTTPString(st.st_mtime))
+            .set("Connection", "keep-alive");
     if (server.mimeTypes().count(ext)) {
-        sendResponseHeader(sock,
-                           "HTTP/1.1", "200", "OK",
-                           {field_pair_t("Connection", "keep-alive"),
-                            field_pair_t("Content-Length", std::to_string(st.st_size)),
-                            field_pair_t("Content-Type", server.mimeTypes().at(ext)),
-                            field_pair_t("Last-Modified", timeToHTTPString(st.st_mtime)),
-                            field_pair_t("Cache-Control", "no-cache")});
-    } else {
-        sendResponseHeader(sock,
-                           "HTTP/1.1", "200", "OK",
-                           {field_pair_t("Connection", "keep-alive"),
-                            field_pair_t("Content-Length", std::to_string(st.st_size)),
-                            field_pair_t("Last-Modified", timeToHTTPString(st.st_mtime)),
-                            field_pair_t("Cache-Control", "no-cache")});
+        res.set("Content-Type", server.mimeTypes().at(ext));
     }
+    res.send(sock);
 
     while (true) {
         auto s = sendfile(sock, fd, nullptr, st.st_size);

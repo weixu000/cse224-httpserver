@@ -1,45 +1,46 @@
 #include <sys/socket.h>
 #include <deque>
-
-#include "spdlog/spdlog.h"
+#include <system_error>
 
 #include "HTTPResponse.hpp"
 
-void sendResponseHeader(int sock,
-                        const std::string &http_ver, const std::string &code, const std::string &desc,
-                        std::initializer_list<field_pair_t> fields) {
-    auto header = http_ver + " " + code + " " + desc + "\r\n";
-    for (auto &it:fields) {
-        header += it.first + ": " + it.second + "\r\n";
-    }
+HTTPResponse::HTTPResponse(const std::string &http_ver, const std::string &code, const std::string &desc)
+        : header(http_ver + " " + code + " " + desc + "\r\n") {
+
+}
+
+HTTPResponse &HTTPResponse::set(const std::string &key, const std::string &value) {
+    header += key + ": " + value + "\r\n";
+    return *this;
+}
+
+void HTTPResponse::send(int sock) {
     header += "\r\n";
-    if (send(sock, header.data(), header.size(), 0) == -1) {
+    if (::send(sock, header.data(), header.size(), 0) == -1) {
         throw std::system_error(errno, std::system_category(), "send() error");
     }
+    header.clear();
 }
 
-void send400ClientError(int sock, bool close) {
+void HTTPResponse::send400ClientError(int sock, bool close) {
+    HTTPResponse res("HTTP/1.1", "400", "Client Error");
+    res.set("Content-Length", "0");
     if (close) {
-        sendResponseHeader(sock,
-                           "HTTP/1.1", "400", "Client Error",
-                           {field_pair_t("Connection", "close")});
+        res.set("Connection", "close");
     } else {
-        sendResponseHeader(sock,
-                           "HTTP/1.1", "400", "Client Error",
-                           {});
+        res.set("Connection", "keep-alive");
     }
+    res.send(sock);
 }
 
 
-void send404NotFound(int sock, bool close) {
+void HTTPResponse::send404NotFound(int sock, bool close) {
+    HTTPResponse res("HTTP/1.1", "404", "Not Found");
+    res.set("Content-Length", "0");
     if (close) {
-        sendResponseHeader(sock,
-                           "HTTP/1.1", "404", "Not Found",
-                           {field_pair_t("Connection", "close")});
+        res.set("Connection", "close");
     } else {
-        sendResponseHeader(sock,
-                           "HTTP/1.1", "404", "Not Found",
-                           {field_pair_t("Connection", "keep-alive"),
-                            field_pair_t("Content-Length", "0")});
+        res.set("Connection", "keep-alive");
     }
+    res.send(sock);
 }

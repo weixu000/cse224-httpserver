@@ -5,13 +5,22 @@
 
 #include "HTTPRequest.hpp"
 
+class HTTPResponse {
+public:
+    HTTPResponse() = default;
 
-void sendResponseHeader(int sock,
-                        const std::string &http_ver, const std::string &code, const std::string &desc,
-                        std::initializer_list<field_pair_t> fields);
+    HTTPResponse(const std::string &http_ver, const std::string &code, const std::string &desc);
 
-void send400ClientError(int sock, bool close);
+    HTTPResponse &set(const std::string &key, const std::string &value);
 
-void send404NotFound(int sock, bool close);
+    void send(int sock);
+
+    static void send400ClientError(int sock, bool close);
+
+    static void send404NotFound(int sock, bool close);
+
+private:
+    std::string header;
+};
 
 #endif //HTTPRESPONSE_HPP
