@@ -44,9 +44,10 @@ std::string canonicalizeURI(const std::string &uri) {
         if (j == std::string::npos) {
             j = uri.size();
         }
-
         auto s = uri.substr(i + 1, j - (i + 1));
-        if (s == ".") {
+        i = j;
+
+        if (s == "." || s == "") {
             continue;
         } else if (s == "..") {
             if (stack.empty()) {
@@ -57,15 +58,14 @@ std::string canonicalizeURI(const std::string &uri) {
         } else {
             stack.push_back(std::move(s));
         }
-        i = j;
     }
 
-    std::string ret = "/";
+    std::string ret;
     for (auto &s:stack) {
         ret += '/';
         ret += s;
     }
-    return ret;
+    return ret.empty() ? "/" : ret;
 }
 
 std::string timeToHTTPString(const time_t &t) {
