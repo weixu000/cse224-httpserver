@@ -10,7 +10,13 @@
 
 HTTPHandler::HTTPHandler(const HttpdServer &s, int fd, const sockaddr &addr)
         : sock(fd), peer_addr(addr), server(s) {
-
+    timeval tv;
+    tv.tv_sec = timeout;
+    tv.tv_usec = 0;
+    if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
+        spdlog::error("setsockopt() error");
+        exit(EXIT_FAILURE);
+    }
 }
 
 HTTPHandler::~HTTPHandler() {
@@ -19,7 +25,7 @@ HTTPHandler::~HTTPHandler() {
 }
 
 void HTTPHandler::serve() {
-    spdlog::info("Started to serve {}", sockaddrToString(peer_addr));
+    spdlog::info("Serving {}", sockaddrToString(peer_addr));
     while (true) {
         const auto request = HTTPRequest(sock);
         if (request.bad()) {
@@ -38,8 +44,6 @@ void HTTPHandler::serve() {
 }
 
 void HTTPHandler::doGET(const HTTPRequest &req) {
-    spdlog::info("responding to GET");
-
     auto uri = canonicalizeURI(req.URI());
     if (uri.empty()) {
         send400ClientError(sock, false);
@@ -83,13 +87,15 @@ void HTTPHandler::doGET(const HTTPRequest &req) {
                            {field_pair_t("Connection", "keep-alive"),
                             field_pair_t("Content-Length", std::to_string(st.st_size)),
                             field_pair_t("Content-Type", server.mimeTypes().at(ext)),
-                            field_pair_t("Last-Modified", timeToHTTPString(st.st_mtime))});
+                            field_pair_t("Last-Modified", timeToHTTPString(st.st_mtime)),
+                            field_pair_t("Cache-Control", "no-cache")});
     } else {
         sendResponseHeader(sock,
                            "HTTP/1.1", "200", "OK",
                            {field_pair_t("Connection", "keep-alive"),
                             field_pair_t("Content-Length", std::to_string(st.st_size)),
-                            field_pair_t("Last-Modified", timeToHTTPString(st.st_mtime))});
+                            field_pair_t("Last-Modified", timeToHTTPString(st.st_mtime)),
+                            field_pair_t("Cache-Control", "no-cache")});
     }
 
     while (true) {

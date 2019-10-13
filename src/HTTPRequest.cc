@@ -12,18 +12,21 @@ HTTPRequest::HTTPRequest(int sock) {
         auto len = recv(sock, buf.data(), buf.size() - 1, MSG_DONTWAIT);
         if (len == -1) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                continue;
+                // Timeout
+                return;
             } else {
                 spdlog::error("recv() error");
                 exit(EXIT_FAILURE);
             }
+        } else if (len == 0) {
+            if (!header.empty()) {
+                spdlog::error("socket closed but header incomplete");
+            }
+            return;
         } else {
             header.append(buf.data(), len);
             if (header.size() >= 4 && header.substr(header.size() - 4, 4) == "\r\n\r\n") {
                 break;
-            } else if (len == 0) {
-                spdlog::error("socket closed but header incomplete");
-                return;
             }
         }
     }
@@ -44,7 +47,6 @@ HTTPRequest::HTTPRequest(int sock) {
         spdlog::error("Bad request initial line: {}", line);
         return;
     }
-    spdlog::info("Method: {}, URI: {}, Version: {}", _method, _uri, _HTTPVer);
 
     while (std::getline(ss, line) && line.size() && line[line.size() - 1] == '\r') {
         if (line == "\r") {
@@ -60,7 +62,6 @@ HTTPRequest::HTTPRequest(int sock) {
         key = line.substr(0, i);
         value = line.substr(i + 2, line.size() - 1 - (i + 2));
         _fields[key] = value;
-        spdlog::info("[{}] = {}", key, value);
     }
     if (line != "\r") {
         spdlog::error("Bad request initial line.");

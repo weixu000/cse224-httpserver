@@ -15,6 +15,7 @@ public:
 private:
     int sock;
     sockaddr peer_addr;
+    static const unsigned int timeout = 5;
 
     const HttpdServer &server;
 
