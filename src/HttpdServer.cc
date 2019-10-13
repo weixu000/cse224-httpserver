@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <fstream>
+#include <signal.h>
 
 #include "spdlog/spdlog.h"
 
@@ -34,6 +35,10 @@ HttpdServer::HttpdServer(const INIReader &config) {
     while (mime_fs >> ext >> mime) {
         _mime_types[ext] = mime;
     }
+
+    // Client closing connection while server sending will send SIGPIPE and terminate program
+    // Ignore SIGPIPE
+    signal(SIGPIPE, SIG_IGN);
 }
 
 void HttpdServer::launch() {
