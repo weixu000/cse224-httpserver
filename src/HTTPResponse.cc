@@ -14,8 +14,7 @@ void sendResponseHeader(int sock,
     }
     header += "\r\n";
     if (send(sock, header.data(), header.size(), 0) == -1) {
-        spdlog::error("send() error");
-        exit(EXIT_FAILURE);
+        throw std::system_error(errno, std::system_category(), "send() error");
     }
 }
 

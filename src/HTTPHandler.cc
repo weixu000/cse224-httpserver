@@ -14,8 +14,7 @@ HTTPHandler::HTTPHandler(const HttpdServer &s, int fd, const sockaddr &addr)
     tv.tv_sec = timeout;
     tv.tv_usec = 0;
     if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) == -1) {
-        spdlog::error("setsockopt() error");
-        exit(EXIT_FAILURE);
+        throw std::system_error(errno, std::system_category(), "setsockopt() error");
     }
 }
 
@@ -27,18 +26,33 @@ HTTPHandler::~HTTPHandler() {
 void HTTPHandler::serve() {
     spdlog::info("Serving {}", sockaddrToString(peer_addr));
     while (true) {
-        const auto request = HTTPRequest(sock);
-        if (request.bad()) {
+        try {
+            const auto request = HTTPRequest(sock);
+            if (request.method() == "GET") {
+                doGET(request);
+            } else {
+                send400ClientError(sock, true);
+                return;
+            }
+        } catch (const BadError &) {
             send400ClientError(sock, true);
             return;
-        }
-
-        if (request.method() == "GET") {
-            doGET(request);
-            continue;
-        } else {
+        } catch (const IncompleteError &) {
             send400ClientError(sock, true);
             return;
+        } catch (const TimeoutError &) {
+            spdlog::error("Timeout before receiving request");
+            return;
+        } catch (const EmptyError &) {
+            spdlog::error("Connection closed before receiving request");
+            return;
+        } catch (const std::system_error &e) {
+            if (e.code().value() == EPIPE) {
+                spdlog::error("Connection closed while sending");
+                return;
+            } else {
+                throw;
+            }
         }
     }
 }
@@ -102,12 +116,8 @@ void HTTPHandler::doGET(const HTTPRequest &req) {
         auto s = sendfile(sock, fd, nullptr, st.st_size);
         if (s == st.st_size) {
             break;
-        } else if (s == EAGAIN) {
-            spdlog::error("sendfile() failed with EAGAIN");
-            continue;
         } else {
-            spdlog::error("sendfile() error: {}", strerror(errno));
-            exit(EXIT_FAILURE);
+            throw std::system_error(errno, std::system_category(), "sendfile() error");
         }
     }
 

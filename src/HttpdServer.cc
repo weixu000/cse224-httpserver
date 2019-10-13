@@ -1,9 +1,9 @@
-#include <sysexits.h>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <fstream>
-#include <signal.h>
+#include <utility>
+#include <csignal>
 
 #include "spdlog/spdlog.h"
 
@@ -11,25 +11,8 @@
 #include "HTTPHandler.hpp"
 #include "utils.hpp"
 
-HttpdServer::HttpdServer(const INIReader &config) {
-    port = config.Get("httpd", "port", "");
-    if (port.empty()) {
-        spdlog::error("port was not in the config file");
-        exit(EX_CONFIG);
-    }
-
-    _doc_root = config.Get("httpd", "doc_root", "");
-    if (_doc_root.empty()) {
-        spdlog::error("doc_root was not in the config file");
-        exit(EX_CONFIG);
-    }
-
-    auto mime_path = config.Get("httpd", "mime_types", "");
-    if (mime_path.empty()) {
-        spdlog::error("mime_types was not in the config file");
-        exit(EX_CONFIG);
-    }
-
+HttpdServer::HttpdServer(std::string port, std::string root, const std::string &mime_path)
+        : _port(std::move(port)), _doc_root(std::move(root)) {
     std::ifstream mime_fs(mime_path);
     std::string ext, mime;
     while (mime_fs >> ext >> mime) {
@@ -43,7 +26,7 @@ HttpdServer::HttpdServer(const INIReader &config) {
 
 void HttpdServer::launch() {
     spdlog::info("Launching web server");
-    spdlog::info("Port: {}", port);
+    spdlog::info("Port: {}", _port);
     spdlog::info("doc_root: {}", _doc_root);
 
     serverListen();
@@ -53,8 +36,7 @@ void HttpdServer::launch() {
         socklen_t peer_addr_size = sizeof(sockaddr);
         int peer_sock = accept(sock, &peer_addr, &peer_addr_size);
         if (peer_sock == -1) {
-            spdlog::error("accept() error");
-            exit(EXIT_FAILURE);
+            throw std::system_error(errno, std::system_category(), "accept() error");
         }
         spdlog::info("Accepted {}", sockaddrToString(peer_addr));
 
@@ -70,10 +52,9 @@ void HttpdServer::serverListen() {
     hints.ai_socktype = SOCK_STREAM; /* Stream socket */
     hints.ai_flags = AI_PASSIVE;    /* For wildcard IP address */
 
-    int s = getaddrinfo(nullptr, port.c_str(), &hints, &result);
+    int s = getaddrinfo(nullptr, _port.c_str(), &hints, &result);
     if (s != 0) {
-        spdlog::error("getaddrinfo: {}", gai_strerror(s));
-        exit(EXIT_FAILURE);
+        throw std::system_error(s, std::generic_category(), gai_strerror(s));
     }
 
     for (auto rp = result; rp; rp = rp->ai_next) {
@@ -91,8 +72,7 @@ void HttpdServer::serverListen() {
     }
 
     if (sock == -1) {               /* No address succeeded */
-        spdlog::error("Could not listen!");
-        exit(EXIT_FAILURE);
+        throw std::runtime_error("Could not listen!");
     }
 
     freeaddrinfo(result);           /* No longer needed */

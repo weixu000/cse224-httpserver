@@ -37,8 +37,17 @@ int main(int argc, char **argv) {
 
     if (config.GetBoolean("httpd", "enabled", true)) {
         spdlog::info("Web server enabled");
-        auto *httpd = new HttpdServer(config);
-        httpd->launch();
+
+        auto port = config.Get("httpd", "port", "");
+        auto root = config.Get("httpd", "doc_root", "");
+        auto mime_path = config.Get("httpd", "mime_types", "");
+        if (port.empty() || root.empty() || mime_path.empty()) {
+            spdlog::error("Not enough parameters for httpd");
+            return EX_CONFIG;
+        }
+
+        HttpdServer httpd(port, root, mime_path);
+        httpd.launch();
     } else {
         spdlog::info("Web server disabled");
     }
