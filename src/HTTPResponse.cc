@@ -24,23 +24,13 @@ void HTTPResponse::send(int sock) {
 
 void HTTPResponse::send400ClientError(int sock, bool close) {
     HTTPResponse res("HTTP/1.1", "400", "Client Error");
-    res.set("Content-Length", "0");
-    if (close) {
-        res.set("Connection", "close");
-    } else {
-        res.set("Connection", "keep-alive");
-    }
+    res.set("Content-Length", "0").set("Connection", close ? "close" : "keep-alive");
     res.send(sock);
 }
 
 
 void HTTPResponse::send404NotFound(int sock, bool close) {
     HTTPResponse res("HTTP/1.1", "404", "Not Found");
-    res.set("Content-Length", "0");
-    if (close) {
-        res.set("Connection", "close");
-    } else {
-        res.set("Connection", "keep-alive");
-    }
+    res.set("Content-Length", "0").set("Connection", close ? "close" : "keep-alive");
     res.send(sock);
 }

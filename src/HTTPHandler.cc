@@ -29,7 +29,9 @@ void HTTPHandler::serve() {
         try {
             const auto request = HTTPRequest(sock);
             if (request.method() == "GET") {
-                doGET(request);
+                if (doGET(request)) {
+                    return;
+                }
             } else {
                 HTTPResponse::send400ClientError(sock, true);
                 return;
@@ -57,11 +59,16 @@ void HTTPHandler::serve() {
     }
 }
 
-void HTTPHandler::doGET(const HTTPRequest &req) {
+bool HTTPHandler::doGET(const HTTPRequest &req) {
+    auto close = false;
+    if (req.fields().count("Connection") && req.fields().at("Connection") == "close") {
+        close = true;
+    }
+
     auto uri = canonicalizeURI(req.URI());
     if (uri.empty()) {
-        HTTPResponse::send400ClientError(sock, false);
-        return;
+        HTTPResponse::send400ClientError(sock, close);
+        return close;
     }
     auto path = server.docRoot() + uri;
     spdlog::info("GET file path: {}", path);
@@ -69,36 +76,36 @@ void HTTPHandler::doGET(const HTTPRequest &req) {
     // Check if the path exists
     struct stat st{};
     if (stat(path.c_str(), &st) == -1) {
-        HTTPResponse::send404NotFound(sock, false);
-        return;
+        HTTPResponse::send404NotFound(sock, close);
+        return close;
     }
 
     // Find index.html if it is a directory
     if (S_ISDIR(st.st_mode)) {
         path += "/index.html";
         if (stat(path.c_str(), &st) == -1) {
-            HTTPResponse::send404NotFound(sock, false);
-            return;
+            HTTPResponse::send404NotFound(sock, close);
+            return close;
         }
     }
 
     // Check if it is regular file
     if (!S_ISREG(st.st_mode)) {
-        HTTPResponse::send404NotFound(sock, false);
-        return;
+        HTTPResponse::send404NotFound(sock, close);
+        return close;
     }
 
     auto fd = open(path.c_str(), O_RDONLY);
     if (fd == -1) {
-        HTTPResponse::send404NotFound(sock, false);
-        return;
+        HTTPResponse::send404NotFound(sock, close);
+        return close;
     }
 
     auto ext = getFileExtension(path);
     HTTPResponse res("HTTP/1.1", "200", "OK");
     res.set("Content-Length", std::to_string(st.st_size))
             .set("Last-Modified", timeToHTTPString(st.st_mtime))
-            .set("Connection", "keep-alive");
+            .set("Connection", close ? "close" : "keep-alive");
     if (server.mimeTypes().count(ext)) {
         res.set("Content-Type", server.mimeTypes().at(ext));
     }
@@ -113,5 +120,6 @@ void HTTPHandler::doGET(const HTTPRequest &req) {
         }
     }
 
-    close(fd);
+    ::close(fd);
+    return close;
 }

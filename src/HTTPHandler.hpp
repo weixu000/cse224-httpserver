@@ -19,7 +19,7 @@ private:
 
     const HttpdServer &server;
 
-    void doGET(const HTTPRequest &req);
+    bool doGET(const HTTPRequest &req);
 };
 
 #endif //HTTPHANDLER_HPP
