@@ -69,9 +69,9 @@ std::string canonicalizeURI(const std::string &uri) {
 }
 
 std::string timeToHTTPString(const time_t &t) {
-    char buf[30];
+    std::array<char, 35> buf{};
     tm tp;
     gmtime_r(&t, &tp);
-    strftime(buf, sizeof(buf), "%a, %d %b %Y %H:%M:%S %Z GMT", &tp);
-    return buf;
+    strftime(buf.data(), buf.size(), "%a, %d %b %Y %H:%M:%S %Z GMT", &tp);
+    return buf.data();
 }
