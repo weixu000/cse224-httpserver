@@ -72,6 +72,6 @@ std::string timeToHTTPString(const time_t &t) {
     std::array<char, 35> buf{};
     tm tp;
     gmtime_r(&t, &tp);
-    strftime(buf.data(), buf.size(), "%a, %d %b %Y %H:%M:%S %Z GMT", &tp);
+    strftime(buf.data(), buf.size(), "%a, %d %b %Y %H:%M:%S %Z", &tp);
     return buf.data();
 }
