@@ -13,6 +13,10 @@
 
 HttpdServer::HttpdServer(std::string port, std::string root, const std::string &mime_path)
         : _port(std::move(port)), _doc_root(std::move(root)) {
+    if (_doc_root.substr(_doc_root.size() - 1) == "/") {
+        _doc_root.erase(_doc_root.size() - 1);
+    }
+
     std::ifstream mime_fs(mime_path);
     std::string ext, mime;
     while (mime_fs >> ext >> mime) {
