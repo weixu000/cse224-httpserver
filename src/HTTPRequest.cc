@@ -72,4 +72,8 @@ void HTTPRequest::parseHeader(const std::string &header) {
     if (line != "\r") {
         throw BadError("No empty line at end of header");
     }
+
+    if (!_fields.count("Host")) {
+        throw BadError("Host is required");
+    }
 }

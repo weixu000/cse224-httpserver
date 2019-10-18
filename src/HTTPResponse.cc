@@ -6,7 +6,7 @@
 
 HTTPResponse::HTTPResponse(const std::string &http_ver, const std::string &code, const std::string &desc)
         : header(http_ver + " " + code + " " + desc + "\r\n") {
-
+    set("Server", "httpd 0.0.0"); // Server is required
 }
 
 HTTPResponse &HTTPResponse::set(const std::string &key, const std::string &value) {
