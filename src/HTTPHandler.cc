@@ -103,12 +103,13 @@ bool HTTPHandler::doGET(const HTTPRequest &req) {
 
     auto ext = getFileExtension(path);
     HTTPResponse res("HTTP/1.1", "200", "OK");
-    res.set("Content-Length", std::to_string(st.st_size))
-            .set("Last-Modified", timeToHTTPString(st.st_mtime))
-            .set("Connection", close ? "close" : "keep-alive");
+    res.set("Last-Modified", timeToHTTPString(st.st_mtime))
+            .set("Content-Length", std::to_string(st.st_size));
     if (server.mimeTypes().count(ext)) {
         res.set("Content-Type", server.mimeTypes().at(ext));
     }
+    res.set("Connection", close ? "close" : "keep-alive");
+
     res.send(sock);
 
     while (true) {
