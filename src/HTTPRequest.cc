@@ -76,4 +76,8 @@ void HTTPRequest::parseHeader(const std::string &header) {
     if (!_fields.count("Host")) {
         throw BadError("Host is required");
     }
+
+    if (_HTTPVer != "HTTP/1.1") {
+        throw BadError("HTTP/1.1 is required");
+    }
 }

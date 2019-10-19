@@ -50,7 +50,7 @@ void HTTPHandler::serve() {
             return;
         } catch (const std::system_error &e) {
             if (e.code().value() == EPIPE) {
-                spdlog::error("Connection closed while sending");
+                spdlog::error("Connection closed abruptly");
                 return;
             } else {
                 throw;
