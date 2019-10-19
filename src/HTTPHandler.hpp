@@ -2,7 +2,7 @@
 #define HTTPHANDLER_HPP
 
 #include "HttpdServer.hpp"
-#include "HTTPRequest.hpp"
+#include "HTTPResponse.hpp"
 
 class HTTPHandler {
 public:
@@ -19,7 +19,7 @@ private:
 
     const HttpdServer &server;
 
-    bool doGET(const HTTPRequest &req);
+    HTTPResponse doGET(const HTTPRequest &req);
 };
 
 #endif //HTTPHANDLER_HPP

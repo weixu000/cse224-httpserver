@@ -5,7 +5,6 @@
 
 #include "HTTPHandler.hpp"
 #include "HTTPRequest.hpp"
-#include "HTTPResponse.hpp"
 #include "utils.hpp"
 
 HTTPHandler::HTTPHandler(const HttpdServer &s, int fd, const sockaddr &addr)
@@ -27,20 +26,22 @@ void HTTPHandler::serve() {
     spdlog::info("Serving {}", sockaddrToString(peer_addr));
     while (true) {
         try {
-            const auto request = HTTPRequest(sock);
-            if (request.method() == "GET") {
-                if (doGET(request)) {
-                    return;
+            const auto req = HTTPRequest(sock);
+            if (req.method() == "GET") {
+                auto close = req.fields().count("Connection") && req.fields().at("Connection") == "close";
+                doGET(req).set("Connection", close ? "close" : "keep-alive").send(sock);
+                if (close) {
+                    return; // client want close, so we close
                 }
             } else {
-                HTTPResponse::send400ClientError(sock, true);
+                HTTPResponse::ClientError().set("Connection", "close").send(sock);
                 return;
             }
         } catch (const BadError &) {
-            HTTPResponse::send400ClientError(sock, true);
+            HTTPResponse::ClientError().set("Connection", "close").send(sock);
             return;
         } catch (const IncompleteError &) {
-            HTTPResponse::send400ClientError(sock, true);
+            HTTPResponse::ClientError().set("Connection", "close").send(sock);
             return;
         } catch (const TimeoutError &) {
             spdlog::error("Timeout before receiving request");
@@ -59,16 +60,10 @@ void HTTPHandler::serve() {
     }
 }
 
-bool HTTPHandler::doGET(const HTTPRequest &req) {
-    auto close = false;
-    if (req.fields().count("Connection") && req.fields().at("Connection") == "close") {
-        close = true;
-    }
-
+HTTPResponse HTTPHandler::doGET(const HTTPRequest &req) {
     auto uri = canonicalizeURI(req.URI());
     if (uri.empty()) {
-        HTTPResponse::send400ClientError(sock, close);
-        return close;
+        return HTTPResponse::ClientError();
     }
     auto path = server.docRoot() + uri;
     spdlog::info("GET file path: {}", path);
@@ -76,29 +71,25 @@ bool HTTPHandler::doGET(const HTTPRequest &req) {
     // Check if the path exists
     struct stat st{};
     if (stat(path.c_str(), &st) == -1) {
-        HTTPResponse::send404NotFound(sock, close);
-        return close;
+        return HTTPResponse::NotFound();
     }
 
     // Find index.html if it is a directory
     if (S_ISDIR(st.st_mode)) {
         path += "/index.html";
         if (stat(path.c_str(), &st) == -1) {
-            HTTPResponse::send404NotFound(sock, close);
-            return close;
+            return HTTPResponse::NotFound();
         }
     }
 
     // Check if it is regular file
     if (!S_ISREG(st.st_mode)) {
-        HTTPResponse::send404NotFound(sock, close);
-        return close;
+        return HTTPResponse::NotFound();
     }
 
     auto fd = open(path.c_str(), O_RDONLY);
     if (fd == -1) {
-        HTTPResponse::send404NotFound(sock, close);
-        return close;
+        return HTTPResponse::NotFound();
     }
 
     auto ext = getFileExtension(path);
@@ -108,6 +99,6 @@ bool HTTPHandler::doGET(const HTTPRequest &req) {
     if (server.mimeTypes().count(ext)) {
         res.set("Content-Type", server.mimeTypes().at(ext));
     }
-    res.set("Connection", close ? "close" : "keep-alive").setBody(fd, st.st_size).send(sock);
-    return close;
+    res.setBody(fd, st.st_size);
+    return res;
 }

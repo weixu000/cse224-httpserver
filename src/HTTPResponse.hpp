@@ -11,17 +11,25 @@ public:
 
     HTTPResponse(const std::string &http_ver, const std::string &code, const std::string &desc);
 
+    HTTPResponse(const HTTPResponse &) = delete;
+
+    HTTPResponse(HTTPResponse &&res);
+
+    HTTPResponse &operator=(const HTTPResponse &) = delete;
+
+    HTTPResponse &operator=(HTTPResponse &&res);
+
     virtual ~HTTPResponse();
 
     HTTPResponse &set(const std::string &key, const std::string &value);
 
     HTTPResponse &setBody(int fd, off_t sz);
 
-    void send(int sock);
+    void send(int sock) const;
 
-    static void send400ClientError(int sock, bool close);
+    static HTTPResponse ClientError();
 
-    static void send404NotFound(int sock, bool close);
+    static HTTPResponse NotFound();
 
 private:
     std::string header;
