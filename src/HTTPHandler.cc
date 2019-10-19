@@ -108,19 +108,6 @@ bool HTTPHandler::doGET(const HTTPRequest &req) {
     if (server.mimeTypes().count(ext)) {
         res.set("Content-Type", server.mimeTypes().at(ext));
     }
-    res.set("Connection", close ? "close" : "keep-alive");
-
-    res.send(sock);
-
-    while (true) {
-        auto s = sendfile(sock, fd, nullptr, st.st_size);
-        if (s == st.st_size) {
-            break;
-        } else {
-            throw std::system_error(errno, std::system_category(), "sendfile() error");
-        }
-    }
-
-    ::close(fd);
+    res.set("Connection", close ? "close" : "keep-alive").setBody(fd, st.st_size).send(sock);
     return close;
 }

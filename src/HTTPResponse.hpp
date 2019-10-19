@@ -11,7 +11,11 @@ public:
 
     HTTPResponse(const std::string &http_ver, const std::string &code, const std::string &desc);
 
+    virtual ~HTTPResponse();
+
     HTTPResponse &set(const std::string &key, const std::string &value);
+
+    HTTPResponse &setBody(int fd, off_t sz);
 
     void send(int sock);
 
@@ -21,6 +25,9 @@ public:
 
 private:
     std::string header;
+
+    off_t body_size = 0;
+    int body_fd = -1;
 };
 
 #endif //HTTPRESPONSE_HPP
