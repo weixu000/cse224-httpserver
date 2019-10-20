@@ -1,43 +1,9 @@
-#include <sys/socket.h>
 #include <sstream>
-#include <cerrno>
 
 #include "HTTPRequest.hpp"
 
-HTTPRequest::HTTPRequest(int sock) {
-    auto header = frameHeader(sock);
+HTTPRequest::HTTPRequest(const std::string &header) {
     parseHeader(header);
-}
-
-std::string HTTPRequest::frameHeader(int sock) {
-    std::string header;
-    std::array<char, 100> buf{};
-    while (true) {
-        auto len = recv(sock, buf.data(), buf.size() - 1, 0);
-        if (len == -1) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) {
-                if (header.empty()) {
-                    throw TimeoutError("Timeout before receiving any request.");
-                } else {
-                    throw IncompleteError("Timeout before receiving complete request.");
-                }
-            } else {
-                throw std::system_error(errno, std::system_category(), "recv() error");
-            }
-        } else if (len == 0) {
-            if (!header.empty()) {
-                throw EmptyError("Socket closed before receiving any request.");
-            } else {
-                throw IncompleteError("Socket closed before receiving complete request.");
-            }
-        } else {
-            header.append(buf.data(), len);
-            if (header.size() >= 4 && header.substr(header.size() - 4, 4) == "\r\n\r\n") {
-                break;
-            }
-        }
-    }
-    return header;
 }
 
 void HTTPRequest::parseHeader(const std::string &header) {

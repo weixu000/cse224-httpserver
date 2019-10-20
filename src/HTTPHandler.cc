@@ -1,3 +1,4 @@
+#include <cerrno>
 #include <sys/socket.h>
 #include <unistd.h>
 #include <spdlog/spdlog.h>
@@ -26,7 +27,7 @@ void HTTPHandler::serve() {
     spdlog::info("Serving {}", sockaddrToString(peer_addr));
     while (true) {
         try {
-            const auto req = HTTPRequest(sock);
+            const auto req = HTTPRequest(frameHeader());
             if (req.method() == "GET") {
                 auto close = req.fields().count("Connection") && req.fields().at("Connection") == "close";
                 doGET(req).set("Connection", close ? "close" : "keep-alive").send(sock);
@@ -101,4 +102,38 @@ HTTPResponse HTTPHandler::doGET(const HTTPRequest &req) {
     }
     res.setBody(fd, st.st_size);
     return res;
+}
+
+std::string HTTPHandler::frameHeader() {
+    std::string header = std::move(frame_remainder);
+    std::array<char, 100> buf{};
+
+    auto delimiter = header.find("\r\n\r\n");
+    while (delimiter == std::string::npos) {
+        auto len = recv(sock, buf.data(), buf.size() - 1, 0);
+        if (len == -1) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                if (header.empty()) {
+                    throw TimeoutError("Timeout before receiving any request.");
+                } else {
+                    throw IncompleteError("Timeout before receiving complete request.");
+                }
+            } else {
+                throw std::system_error(errno, std::system_category(), "recv() error");
+            }
+        } else if (len == 0) {
+            if (!header.empty()) {
+                throw EmptyError("Socket closed before receiving any request.");
+            } else {
+                throw IncompleteError("Socket closed before receiving complete request.");
+            }
+        } else {
+            header.append(buf.data(), len);
+            auto pos = header.size() <= std::string::size_type(len) + 3 ? 0 : header.size() - len - 3;
+            delimiter = header.find("\r\n\r\n", pos);
+        }
+    }
+    frame_remainder = header.substr(delimiter + 4);
+    header.erase(delimiter + 4);
+    return header;
 }

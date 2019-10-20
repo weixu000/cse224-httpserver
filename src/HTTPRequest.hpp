@@ -7,18 +7,6 @@
 using fields_t = std::map<std::string, std::string>;
 using field_pair_t = fields_t::value_type;
 
-class EmptyError : std::runtime_error {
-    using std::runtime_error::runtime_error;
-};
-
-class TimeoutError : EmptyError {
-    using EmptyError::EmptyError;
-};
-
-class IncompleteError : std::runtime_error {
-    using std::runtime_error::runtime_error;
-};
-
 class BadError : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
@@ -27,7 +15,7 @@ class HTTPRequest {
 public:
     HTTPRequest() = default;
 
-    HTTPRequest(int sock);
+    explicit HTTPRequest(const std::string &header);
 
     const std::string &method() const { return _method; }
 
@@ -38,8 +26,6 @@ public:
     const fields_t &fields() const { return _fields; }
 
 private:
-    std::string frameHeader(int sock);
-
     void parseHeader(const std::string &header);
 
     std::string _method, _uri, _HTTPVer;
