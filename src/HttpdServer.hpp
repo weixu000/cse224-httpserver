@@ -9,7 +9,7 @@ using mimes_t = std::map<std::string, std::string>;
 
 class HttpdServer {
 public:
-    HttpdServer(std::string port, std::string root, const std::string &mime_path);
+    HttpdServer(std::string port, const std::string &root, const std::string &mime_path);
 
     void launch();
 

@@ -62,11 +62,15 @@ void HTTPHandler::serve() {
 }
 
 HTTPResponse HTTPHandler::doGET(const HTTPRequest &req) {
-    auto uri = canonicalizeURI(req.URI());
-    if (uri.empty()) {
+    std::string path;
+    try {
+        path = normalizeURI(req.URI(), server.docRoot());
+    } catch (std::invalid_argument &e) {
+        spdlog::error("Incorrect request URI: {}", req.URI());
         return HTTPResponse::ClientError();
+    } catch (std::system_error &e) {
+        return HTTPResponse::NotFound();
     }
-    auto path = server.docRoot() + uri;
     spdlog::info("GET file path: {}", path);
 
     // Check if the path exists

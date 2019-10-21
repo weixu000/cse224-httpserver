@@ -1,8 +1,9 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <wordexp.h>
 
 #include <array>
-#include <deque>
+#include <system_error>
 
 #include "utils.hpp"
 
@@ -32,40 +33,63 @@ std::string getFileExtension(const std::string &path) {
     return dot == std::string::npos ? "" : path.substr(dot);
 }
 
-std::string canonicalizeURI(const std::string &uri) {
-    if (uri.empty() || uri[0] != '/') {
-        return "";
+std::string normalizeURI(const std::string &uri, const std::string &root) {
+    if (uri.empty() || uri[0] != '/') { // must starts with /
+        throw std::invalid_argument("Incorrect uri");
     }
 
-    std::deque<std::string> stack;
-    std::string::size_type i = 0;
-    while (i != uri.size()) {
-        auto j = uri.find('/', i + 1);
-        if (j == std::string::npos) {
-            j = uri.size();
+    auto path = root + uri;
+    auto real_p = realpath(path.c_str(), nullptr);
+    if (real_p == nullptr) {
+        throw std::system_error(errno, std::system_category(), "realpath() error");
+    }
+    path = real_p;
+    free(real_p);
+
+    if (path.rfind(root, 0) != 0) {
+        throw std::invalid_argument("URI escapes root");
+    }
+
+    return path;
+}
+
+std::string expandPath(std::string path) {
+    if (!path.empty() && path[0] == '~') {
+        // double quote the input except tilde
+        // ~xxx/"xxx/xxx"
+        auto tilde_slash = path.find('/');
+        if (tilde_slash != std::string::npos) {
+            path.insert(tilde_slash + 1, 1, '"');
+            path.append(1, '"');
         }
-        auto s = uri.substr(i + 1, j - (i + 1));
-        i = j;
-
-        if (s == "." || s == "") {
-            continue;
-        } else if (s == "..") {
-            if (stack.empty()) {
-                return "";
-            } else {
-                stack.pop_back();
-            }
-        } else {
-            stack.push_back(std::move(s));
-        }
+    } else {
+        // double quote the input
+        path.insert(0, 1, '"');
+        path.append(1, '"');
     }
 
-    std::string ret;
-    for (auto &s:stack) {
-        ret += '/';
-        ret += s;
+    // tilde expansion and variable substitution
+    wordexp_t p;
+    auto err = wordexp(path.c_str(), &p, WRDE_NOCMD | WRDE_UNDEF);
+    if (err != 0) {
+        throw std::system_error(err, std::generic_category(), "wordexp() error");
     }
-    return ret.empty() ? "/" : ret;
+    if (p.we_wordc != 1) {
+        throw std::invalid_argument("Incorrect path to expand");
+    }
+    path = p.we_wordv[0];
+    wordfree(&p);
+
+    // to absolute path and remove trailing slash
+    auto real_p = realpath(path.c_str(), nullptr);
+    if (real_p == nullptr) {
+        // trailing slash of a path to regular file can throw
+        throw std::system_error(errno, std::system_category(), "realpath() error");
+    }
+    path = real_p;
+    free(real_p);
+
+    return path;
 }
 
 std::string timeToHTTPString(const time_t &t) {

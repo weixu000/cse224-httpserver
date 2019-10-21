@@ -9,7 +9,9 @@ std::string sockaddrToString(const sockaddr &sa);
 
 std::string getFileExtension(const std::string &path);
 
-std::string canonicalizeURI(const std::string &uri);
+std::string normalizeURI(const std::string &uri, const std::string &root);
+
+std::string expandPath(std::string path);
 
 std::string timeToHTTPString(const time_t &t);
 
