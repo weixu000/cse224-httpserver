@@ -33,6 +33,9 @@ void HTTPRequest::parseHeader(const std::string &header) {
         std::string key, value;
         key = line.substr(0, i);
         value = line.substr(i + 2, line.size() - 1 - (i + 2));
+        if (key.empty() || value.empty()) {
+            throw BadError("Bad request header fields");
+        }
         _fields[key] = value;
     }
     if (line != "\r") {
