@@ -33,7 +33,7 @@
 .air application/vnd.adobe.air-application-installer-package+zip
 .amc application/mpeg
 .anx application/annodex
-.apk application/vnd.android.package-archive 
+.apk application/vnd.android.package-archive
 .application application/x-ms-application
 .art image/x-jg
 .asa application/xml
@@ -123,7 +123,7 @@
 .dwf drawing/x-dwf
 .dwg application/acad
 .dwp application/octet-stream
-.dxf application/x-dxf 
+.dxf application/x-dxf
 .dxr application/x-director
 .eml message/rfc822
 .emz application/octet-stream
@@ -410,7 +410,7 @@
 .rqy text/x-ms-rqy
 .rtf application/rtf
 .rtx text/richtext
-.rvt application/octet-stream 
+.rvt application/octet-stream
 .ruleset application/xml
 .s text/plain
 .safariextz application/x-safari-safariextz
@@ -432,7 +432,7 @@
 .sit application/x-stuffit
 .sitemap application/xml
 .skin application/xml
-.skp application/x-koan 
+.skp application/x-koan
 .sldm application/vnd.ms-powerpoint.slide.macroEnabled.12
 .sldx application/vnd.openxmlformats-officedocument.presentationml.slide
 .slk application/vnd.ms-excel
@@ -591,7 +591,7 @@
 .xltx application/vnd.openxmlformats-officedocument.spreadsheetml.template
 .xlw application/vnd.ms-excel
 .xml text/xml
-.xmp application/octet-stream 
+.xmp application/octet-stream
 .xmta application/xml
 .xof x-world/x-vrml
 .XOML text/plain
