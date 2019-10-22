@@ -12,7 +12,6 @@ ThreadPool::ThreadPool(unsigned int num) {
 ThreadPool::~ThreadPool() {
     {
         std::unique_lock<std::mutex> lock(mutex);
-        cv.wait(lock, [this] { return queue.empty(); });
         shouldStop = true;
     }
     cv.notify_all();
@@ -24,6 +23,9 @@ ThreadPool::~ThreadPool() {
 void ThreadPool::addTask(ThreadPool::Task f) {
     {
         std::lock_guard<std::mutex> lock(mutex);
+        if (shouldStop) {
+            throw std::runtime_error("Cannot add task after stopped");
+        }
         queue.push(std::move(f));
     }
     cv.notify_one();
@@ -35,7 +37,7 @@ void ThreadPool::workLoop() {
         {
             std::unique_lock<std::mutex> lock(mutex);
             cv.wait(lock, [this] { return !queue.empty() || shouldStop; });
-            if (shouldStop) {
+            if (shouldStop && queue.empty()) { // if stopped, handle remaining tasks
                 break;
             }
             f = std::move(queue.front());
