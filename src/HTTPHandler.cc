@@ -103,6 +103,9 @@ HTTPResponse HTTPHandler::doGET(const HTTPRequest &req) {
             .set("Content-Length", std::to_string(st.st_size));
     if (server.mimeTypes().count(ext)) {
         res.set("Content-Type", server.mimeTypes().at(ext));
+    } else {
+        spdlog::error("Unkown MIME type");
+        res.set("Content-Type", "application/octet-stream");
     }
     res.setBody(fd, st.st_size);
     return res;
